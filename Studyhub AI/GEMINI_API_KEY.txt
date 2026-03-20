@@ -1,2 +1,0 @@
-# Add your Gemini API key here for Google Generative AI (Gemini)
-GEMINI_API_KEY=
