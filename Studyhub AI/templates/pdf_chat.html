@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div style="display: flex; height: 100vh; overflow: hidden;">
+
+    <!-- PDF Sessions Sidebar -->
+    <div style="width: 220px; flex-shrink: 0; background: var(--sidebar-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 14px 10px; overflow-y: auto;">
+
+        <!-- New PDF Chat Button -->
+        <a href="{{ url_for('new_pdf_chat') }}"
+           style="display: flex; align-items: center; justify-content: center; gap: 8px;
+                  background: rgba(168,199,250,0.10); border: 1px solid rgba(168,199,250,0.22);
+                  color: var(--accent-color); padding: 9px 14px; border-radius: 24px;
+                  font-size: 0.88rem; font-weight: 600; text-decoration: none; margin-bottom: 18px;
+                  transition: background 0.2s; white-space: nowrap;">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M7 1v12M1 7h12"></path></svg>
+            New PDF Chat
+        </a>
+
+        <div style="font-size: 0.72rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; padding-left: 6px;">Recent</div>
+
+        {% if pdf_sessions %}
+            {% for s in pdf_sessions %}
+            <div style="border-radius: 9px; margin-bottom: 3px; transition: background 0.15s; position: relative;
+                        {% if current_pdf_session == s.session_id %}
+                        background: rgba(168,199,250,0.12); border: 1px solid rgba(168,199,250,0.15);
+                        {% else %}border: 1px solid transparent;{% endif %}"
+                 onmouseover="this.style.background='rgba(255,255,255,0.05)'; this.querySelector('.pdf-del-btn').style.opacity='1'"
+                 onmouseout="this.style.background='{% if current_pdf_session == s.session_id %}rgba(168,199,250,0.12){% endif %}'; this.querySelector('.pdf-del-btn').style.opacity='0'">
+
+                <a href="{{ url_for('pdf_chat', session_id=s.session_id) }}"
+                   style="display: block; padding: 8px 28px 8px 10px; text-decoration: none;">
+                    <div style="font-size: 0.82rem; color: {% if current_pdf_session == s.session_id %}var(--accent-color){% else %}var(--text-color){% endif %}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        📄 {{ s.filename[:20] }}{% if s.filename|length > 20 %}...{% endif %}
+                    </div>
+                    <div style="font-size: 0.73rem; color: var(--text-secondary); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        {{ s.first_message[:26] }}{% if s.first_message|length > 26 %}...{% endif %}
+                    </div>
+                    <div style="font-size: 0.68rem; color: #555; margin-top: 3px;">{{ s.created_at[:10] }}</div>
+                </a>
+
+                <form method="post" action="{{ url_for('delete_pdf_chat', session_id=s.session_id) }}"
+                      style="position: absolute; top: 6px; right: 4px;"
+                      onsubmit="return confirm('Delete this PDF chat?')">
+                    <button type="submit" class="pdf-del-btn"
+                        style="background: none; border: none; color: #FF6B6B; cursor: pointer;
+                               font-size: 0.8rem; padding: 3px 5px; border-radius: 4px;
+                               opacity: 0; transition: opacity 0.15s; line-height: 1;"
+                        title="Delete">✕</button>
+                </form>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div style="color: var(--text-secondary); font-size: 0.8rem; text-align: center; margin-top: 24px; line-height: 1.6;">
+                No PDF chats yet.<br>Upload a PDF to start.
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Main Content -->
+    <div style="flex: 1; display: flex; flex-direction: row; overflow: hidden; gap: 0;">
+
+        <!-- Left Panel: Upload & Notes -->
+        <div style="width: 280px; flex-shrink: 0; background: var(--sidebar-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 20px 16px; overflow-y: auto;">
+            <h3 style="margin: 0 0 16px; font-size: 1rem; font-weight: 600; color: var(--text-color);">Context Source</h3>
+
+            <!-- PDF Status Badge -->
+            {% if pdf_loaded %}
+            <div style="background: rgba(76,175,80,0.1); border: 1px solid rgba(76,175,80,0.3); padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; font-size: 0.83rem;">
+                <div style="color: #6BCF7F; font-weight: 600; margin-bottom: 4px;">✓ PDF Loaded</div>
+                <div style="color: #4a9e55; font-size: 0.76rem; word-break: break-all; line-height: 1.4;">{{ pdf_text_preview[:60] }}...</div>
+                <form method="post" style="margin-top: 8px;">
+                    <button type="submit" name="clear_pdf" value="1"
+                        style="background: none; border: 1px solid rgba(255,107,107,0.4); color: #FF6B6B; cursor: pointer; font-size: 0.76rem; padding: 3px 10px; border-radius: 6px; transition: all 0.2s;">
+                        ✕ Clear PDF
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+
+            <!-- Upload Status -->
+            {% if upload_status and not pdf_loaded %}
+            <div style="background: rgba(255,107,107,0.08); border: 1px solid rgba(255,107,107,0.25); padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; font-size: 0.82rem; color: #FFB3B3;">
+                {{ upload_status }}
+            </div>
+            {% elif upload_status and pdf_loaded %}
+            <div style="background: rgba(76,175,80,0.08); border: 1px solid rgba(76,175,80,0.25); padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; font-size: 0.82rem; color: #90EE90;">
+                {{ upload_status }}
+            </div>
+            {% endif %}
+
+            <!-- Drop Zone -->
+            <div id="dropZone"
+                style="border: 2px dashed var(--border-color); padding: 24px 12px; text-align: center;
+                       border-radius: 12px; margin-bottom: 16px; cursor: pointer; transition: all 0.2s;
+                       background: rgba(255,255,255,0.01);">
+                <div style="font-size: 2rem; margin-bottom: 8px;">📄</div>
+                <div style="font-weight: 500; color: var(--text-secondary); font-size: 0.85rem;">Upload File</div>
+                <div style="font-size: 0.75rem; color: #555; margin-top: 4px;">PDF, TXT, DOC, DOCX</div>
+                <div style="font-size: 0.72rem; color: #444; margin-top: 3px;">Max 10MB · Drag & drop or click</div>
+                <input type="file" id="fileInput" style="display:none;" accept=".pdf,.txt,.doc,.docx">
+            </div>
+
+            <!-- Notes Textarea -->
+            <label style="font-size: 0.82rem; color: var(--text-secondary); font-weight: 500; margin-bottom: 6px; display: block;">Or paste notes</label>
+            <textarea name="notes_text" form="pdfChatForm" id="notesTextarea"
+                style="flex: 1; min-height: 160px; background: var(--input-bg); border: 1px solid var(--border-color);
+                       color: var(--text-color); padding: 12px; border-radius: 10px; resize: vertical;
+                       font-family: inherit; font-size: 0.85rem; line-height: 1.5; outline: none; transition: border 0.2s;"
+                placeholder="Paste your notes here — AI will answer based on this..."
+                onfocus="this.style.borderColor='var(--accent-color)'"
+                onblur="this.style.borderColor='var(--border-color)'">{{ notes_text or '' }}</textarea>
+        </div>
+
+        <!-- Chat Panel -->
+        <div style="flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; background: var(--bg-color);">
+
+            <!-- Chat Header -->
+            <div style="padding: 14px 20px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px; background: var(--sidebar-bg);">
+                <span style="color: var(--accent-color); font-size: 1.1rem;">✧</span>
+                <span style="font-size: 0.92rem; font-weight: 600; color: var(--text-color);">
+                    {% if pdf_loaded %}PDF Chat{% else %}Study Hub PDF AI{% endif %}
+                </span>
+                {% if pdf_loaded %}
+                <span style="margin-left: auto; background: rgba(76,175,80,0.15); color: #6BCF7F; font-size: 0.72rem; padding: 3px 10px; border-radius: 12px; border: 1px solid rgba(76,175,80,0.2);">● PDF Active</span>
+                {% else %}
+                <span style="margin-left: auto; color: var(--text-secondary); font-size: 0.78rem;">Upload a PDF or paste notes to begin</span>
+                {% endif %}
+            </div>
+
+            <!-- Messages -->
+            <div id="pdfChatContainer"
+                style="flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 140px; display: flex; flex-direction: column; gap: 20px;">
+
+                {% if not logs %}
+                <div style="text-align: center; margin-top: 8vh; color: var(--text-secondary); animation: fadeIn 0.8s ease;">
+                    <div style="font-size: 2.8rem; margin-bottom: 12px;">🔍</div>
+                    <div style="font-size: 1rem; font-weight: 500; margin-bottom: 6px; color: var(--text-color);">Ask anything about your document</div>
+                    <div style="font-size: 0.85rem;">Upload a PDF or paste notes on the left, then ask questions here.</div>
+                </div>
+                {% endif %}
+
+                <div id="messagesWrap" style="display: flex; flex-direction: column; gap: 20px; max-width: 760px; width: 100%; margin: 0 auto;">
+                    {% for log in logs %}
+                    <!-- User -->
+                    <div style="display: flex; justify-content: flex-end;">
+                        <div style="background: var(--message-bg); color: var(--text-color); padding: 11px 16px; border-radius: 18px 18px 4px 18px; max-width: 65%; font-size: 0.93rem; line-height: 1.6; word-wrap: break-word;">
+                            {{ log['message'] }}
+                        </div>
+                    </div>
+                    <!-- AI -->
+                    <div style="display: flex; gap: 10px; align-items: flex-start;">
+                        <div style="flex-shrink: 0; width: 28px; height: 28px; background: rgba(168,199,250,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; color: var(--accent-color); margin-top: 2px;">✧</div>
+                        <div style="color: var(--text-color); font-size: 0.93rem; line-height: 1.75; max-width: 82%; word-wrap: break-word; padding-top: 3px;">
+                            {{ log['response'] }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 12px 20px 18px; background: linear-gradient(180deg, transparent 0%, var(--bg-color) 30%);">
+                <!-- Chips -->
+                <div style="display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap;">
+                    <button class="chip" onclick="setPdfInput('Can you summarize this content briefly?')">Summarize</button>
+                    <button class="chip" onclick="setPdfInput('What are the key points?')">Key points</button>
+                    <button class="chip" onclick="setPdfInput('Generate 5 quiz questions from this.')">Quiz me</button>
+                    <button class="chip" onclick="setPdfInput('Explain this in simple terms.')">Simplify</button>
+                </div>
+
+                <form method="post" id="pdfChatForm" enctype="multipart/form-data"
+                    style="display: flex; align-items: center; gap: 10px; background: var(--input-bg); border: 1px solid var(--border-color); border-radius: 26px; padding: 6px 6px 6px 14px; transition: border 0.2s;"
+                    onfocusin="this.style.borderColor='var(--accent-color)'"
+                    onfocusout="this.style.borderColor='var(--border-color)'">
+                    <select name="ai_provider"
+                        style="background: #2a2b2f; border: 1px solid var(--border-color); color: var(--text-color); font-size: 0.82rem; border-radius: 16px; padding: 5px 10px; cursor: pointer; flex-shrink: 0;">
+                        <option value="openai" {% if session.get('ai_provider','openai')=='openai' %}selected{% endif %}>OpenAI</option>
+                        <option value="gemini" {% if session.get('ai_provider')=='gemini' %}selected{% endif %}>Gemini</option>
+                    </select>
+                    <input type="text" name="message" id="pdfChatInput" placeholder="Ask about your content..."
+                        style="flex: 1; background: transparent; border: none; outline: none; color: var(--text-color); font-size: 0.93rem; padding: 6px 4px;"
+                        autocomplete="off">
+                    <button type="submit"
+                        style="background: var(--accent-color); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M2.01 21L23 12L2.01 3L2 10L17 12L2 14L2.01 21Z" fill="#111"/>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);} }
+.typing-dot{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--text-secondary);margin:0 2px;animation:tb 1.2s infinite;}
+.typing-dot:nth-child(2){animation-delay:0.2s;}.typing-dot:nth-child(3){animation-delay:0.4s;}
+@keyframes tb{0%,60%,100%{transform:translateY(0);opacity:0.4;}30%{transform:translateY(-4px);opacity:1;}}
+#dropZone:hover { border-color: var(--accent-color) !important; background: rgba(168,199,250,0.04) !important; }
+</style>
+
+<script>
+const pdfContainer = document.getElementById('pdfChatContainer');
+if (pdfContainer) pdfContainer.scrollTop = pdfContainer.scrollHeight;
+
+function setPdfInput(text) {
+    const input = document.getElementById('pdfChatInput');
+    if (input) { input.value = text; input.focus(); }
+}
+
+// Submit loading indicator
+document.getElementById('pdfChatForm').addEventListener('submit', function(e) {
+    const input = document.getElementById('pdfChatInput');
+    if (!input || !input.value.trim()) return;
+    const wrap = document.getElementById('messagesWrap');
+
+    const userDiv = document.createElement('div');
+    userDiv.style.cssText = 'display:flex;justify-content:flex-end;';
+    userDiv.innerHTML = `<div style="background:var(--message-bg);color:var(--text-color);padding:11px 16px;border-radius:18px 18px 4px 18px;max-width:65%;font-size:0.93rem;line-height:1.6;word-wrap:break-word;">${input.value}</div>`;
+    wrap.appendChild(userDiv);
+
+    const aiDiv = document.createElement('div');
+    aiDiv.style.cssText = 'display:flex;gap:10px;align-items:flex-start;';
+    aiDiv.innerHTML = `<div style="flex-shrink:0;width:28px;height:28px;background:rgba(168,199,250,0.1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.9rem;color:var(--accent-color);">✧</div><div style="color:var(--text-color);font-size:0.93rem;line-height:1.75;padding-top:3px;"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></div>`;
+    wrap.appendChild(aiDiv);
+    pdfContainer.scrollTop = pdfContainer.scrollHeight;
+});
+
+// Drag & Drop
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent-color)'; dropZone.style.background = 'rgba(168,199,250,0.05)'; });
+dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--border-color)'; dropZone.style.background = 'rgba(255,255,255,0.01)'; });
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.style.borderColor = 'var(--border-color)';
+    dropZone.style.background = 'rgba(255,255,255,0.01)';
+    if (e.dataTransfer.files.length > 0) uploadFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files.length > 0) uploadFile(e.target.files[0]); });
+
+function uploadFile(file) {
+    dropZone.innerHTML = '<div style="padding:20px;color:var(--text-secondary);font-size:0.85rem;">⏳ Uploading...</div>';
+    const fd = new FormData();
+    fd.append('pdf_file', file);
+    // Include current session_id if exists
+    const sid = new URLSearchParams(window.location.search).get('session_id') || '';
+    fetch(window.location.pathname + (sid ? '?session_id=' + sid : ''), { method: 'POST', body: fd })
+        .then(r => r.text())
+        .then(html => { document.open(); document.write(html); document.close(); })
+        .catch(() => { dropZone.innerHTML = '<div style="color:#FF6B6B;padding:16px;font-size:0.85rem;">Upload failed. Try again.</div>'; });
+}
+</script>
+{% endblock %}
